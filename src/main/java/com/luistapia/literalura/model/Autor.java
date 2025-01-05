@@ -12,10 +12,18 @@ public class Autor {
     private Long Id;
     private Integer anoNacimiento;
     private Integer anoMuerte;
-    @Column(unique = true)
+    @Column(nullable = false, unique = true)
     private String nombre;
-    @OneToMany
+    @OneToMany(mappedBy = "autor", fetch = FetchType.EAGER, orphanRemoval = true)
     private List<Libro> libros;
+
+    public List<Libro> getLibros() {
+        return libros;
+    }
+
+    public void setLibros(List<Libro> libros) {
+        this.libros = libros;
+    }
 
     public Autor(){}
 

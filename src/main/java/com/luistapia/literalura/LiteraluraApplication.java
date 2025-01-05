@@ -1,8 +1,8 @@
 package com.luistapia.literalura;
 
 import com.luistapia.literalura.main.Principal;
-import com.luistapia.literalura.repository.AutorRepository;
-import com.luistapia.literalura.repository.LibroRepository;
+import com.luistapia.literalura.service.AutorService;
+import com.luistapia.literalura.service.LibroService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -12,9 +12,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class LiteraluraApplication implements CommandLineRunner {
 
 	@Autowired
-	private LibroRepository repoLibro;
+	private LibroService libroService;
 	@Autowired
-	private AutorRepository repoAutor;
+	private AutorService autorService;
 
 	public static void main(String[] args) {
 		SpringApplication.run(LiteraluraApplication.class, args);
@@ -22,7 +22,7 @@ public class LiteraluraApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		Principal principal = new Principal(repoLibro,repoAutor );
+		Principal principal = new Principal(libroService,autorService);
 		principal.muestraElMenu();
 	}
 }
