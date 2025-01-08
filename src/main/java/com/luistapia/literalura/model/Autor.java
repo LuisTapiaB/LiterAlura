@@ -2,7 +2,9 @@ package com.luistapia.literalura.model;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table
@@ -14,23 +16,27 @@ public class Autor {
     private Integer anoMuerte;
     @Column(nullable = false, unique = true)
     private String nombre;
-    @OneToMany(mappedBy = "autor", fetch = FetchType.EAGER, orphanRemoval = true)
-    private List<Libro> libros;
+    @OneToMany(mappedBy = "autor", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<Libro> libros = new ArrayList<>();
 
     public List<Libro> getLibros() {
         return libros;
     }
 
-    public void setLibros(List<Libro> libros) {
-        this.libros = libros;
-    }
-
     public Autor(){}
 
     public Autor(DatosAutor autor){
-        this.anoNacimiento = autor.anoNacimiento();
-        this.anoMuerte =autor.anoMuerte();
+        this.anoNacimiento = autor.anoNacimiento() != null ? autor.anoNacimiento() : 0;
+        this.anoMuerte =autor.anoMuerte() != null ? autor.anoMuerte() : 0;
         this.nombre = autor.nombre();
+    }
+
+    public void addLibro(Libro libro){
+        libros.add(libro);
+    }
+
+    public void setLibros(List<Libro> libros) {
+        this.libros = libros;
     }
 
     public Integer getAnoNacimiento() {
@@ -59,8 +65,6 @@ public class Autor {
 
     @Override
     public String toString() {
-        return "Autor: " + nombre +
-                " anoNacimiento= " + anoNacimiento +
-                ", anoMuerte= " + anoMuerte;
+        return "* " + this.getNombre() + " (" +this.getAnoNacimiento()+" - "+this.getAnoMuerte()+") ("+ this.libros.size()+" libros)";
     }
 }

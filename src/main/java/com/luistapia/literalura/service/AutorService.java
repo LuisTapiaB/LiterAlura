@@ -1,12 +1,12 @@
 package com.luistapia.literalura.service;
 
 import com.luistapia.literalura.model.Autor;
-import com.luistapia.literalura.model.Libro;
 import com.luistapia.literalura.repository.AutorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AutorService {
@@ -21,5 +21,8 @@ public class AutorService {
     }
     public List<Autor> autoresVivos(int ano){
         return autorRepository.autoresVivos(ano);
+    }
+    public Optional<Autor> busquedaAutorPorNombre(String nombre) {
+        return autorRepository.autorBuscado(nombre);
     }
 }

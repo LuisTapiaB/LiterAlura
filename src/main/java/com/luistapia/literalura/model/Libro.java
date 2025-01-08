@@ -10,23 +10,23 @@ public class Libro {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String titulo;
     private List<String> tematicas;
-    @ManyToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "autor_id",nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "autor_id", nullable = false)
     private Autor autor;
     private String idioma;
     private Integer descargas;
 
-    Libro(){}
+    public Libro(){}
 
-    public Libro(DatosLibro d) {
+    public Libro(DatosLibro d, Autor autor) {
         this.titulo = d.titulo();
-        this.tematicas = d.personajes();
+        this.tematicas = d.tematicas();
         this.idioma = d.idiomas().stream().findFirst().orElse(null);
         this.descargas = d.descargas();
-        this.autor = new Autor(d.autores().stream().findFirst().orElse(null));
+        this.autor = autor;
     }
 
     public String getTitulo() {
@@ -70,9 +70,6 @@ public class Libro {
 
     @Override
     public String toString() {
-        return  "titulo:'" + titulo + '\'' +
-                ", personajes: " + tematicas +
-                ", idiomas: " + idioma + '\'' +
-                ", descargas: " + descargas;
+        return  "* " + this.getTitulo() + ", [" + this.getIdioma()+"]" + ", ( autor: "+ this.getAutor().getNombre()+")";
     }
 }

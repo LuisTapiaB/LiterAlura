@@ -5,6 +5,7 @@ import com.luistapia.literalura.service.AutorService;
 import com.luistapia.literalura.service.ConsumoAPI;
 import com.luistapia.literalura.service.ConvierteDatos;
 import com.luistapia.literalura.service.LibroService;
+import jakarta.transaction.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +17,6 @@ public class Principal {
     private final String URL_BASE = "https://gutendex.com/books";
     private ConvierteDatos conversor = new ConvierteDatos();
     private Libro libro;
-    private Autor autor;
     private List<Libro> libros;
     private List<Autor> autores;
     private LibroService libroService;
@@ -31,19 +31,19 @@ public class Principal {
         var opcion = -1;
         while (opcion != 0) {
             var menu = """
-                    1 - BUSCAR LIBRO POR TITULO 
+                    1 - BUSCAR LIBRO POR TITULO
                     2 - LISTAR LIBROS REGISTRADOS
                     3 - LISTAR AUTORES REGISTRADOS
                     4 - LISTAR AUTORES VIVOS EN UN DETERMINADO AÑO
                     5 - LISTAR LIBROS POR IDIOMA
-                                
+                    
                     0 - Salir
                     """;
             System.out.println(menu);
             try{
                 opcion = teclado.nextInt();
             } catch (Exception e) {
-                System.out.println(e.getClass());
+             // System.out.println(e.getClass());
                 System.out.println("Entrada no valida");
                 opcion = -1;
             }
@@ -51,7 +51,7 @@ public class Principal {
 
             switch (opcion) {
                 case 1:
-                    buscarxTitulo();
+                    buscarPorTitulo();
                     break;
                 case 2:
                     buscarLibrosRegistrados();
@@ -63,7 +63,7 @@ public class Principal {
                     buscarAutoresVivos();
                     break;
                 case 5:
-                    buscarLibrosxIdioma();
+                    buscarLibrosPorIdioma();
                     break;
                 case 0:
                     System.out.println("Cerrando la aplicación...");
@@ -75,43 +75,70 @@ public class Principal {
 
     }
 
-    public void buscarxTitulo() {
-        System.out.println("Escribe el nombre del libro que deseas buscar y guardar");
-        var nombreLibro = teclado.nextLine();
-        var json = consumoApi.obtenerDatos(URL_BASE + "/?search=" + nombreLibro.replace(" ", "%20"));
-        DatosBusqueda datosBusqueda = conversor.stringToClass(json, DatosBusqueda.class);
-        Busqueda busqueda = new Busqueda(datosBusqueda);
-        Optional<DatosLibro> buscado = busqueda.getResultados().stream().findFirst();
-        if (buscado.isPresent()){
-            try {
-                var libroBuscado = buscado.get();
-                libro = new Libro(libroBuscado);
-                libroService.saveLibro(libro);
-                System.out.println("libro guardado: "+libro.getTitulo() + "["+libro.getIdioma()+"]");
-            } catch (Exception e) {
-                e.toString();
-            }
-        } else {
-            System.out.println("Libro no encontrado");
+    public void buscarPorTitulo() {
+        System.out.println("Escribe el nombre del libro que deseas buscar y guardar:");
+        String nombreLibro = teclado.nextLine();
+        Optional<DatosLibro> datosLibro = buscarLibroEnApi(nombreLibro);
+        datosLibro.ifPresentOrElse(this::procesarLibro, () -> System.out.println("Libro no encontrado"));
+    }
+
+    private Optional<DatosLibro> buscarLibroEnApi(String nombreLibro) {
+        try {
+            String encodedNombre = nombreLibro.replace(" ", "%20");
+            String json = consumoApi.obtenerDatos(URL_BASE + "/?search=" + encodedNombre);
+            DatosBusqueda datosBusqueda = conversor.stringToClass(json, DatosBusqueda.class);
+            return datosBusqueda.resultados().stream().findFirst();
+        } catch (Exception e) {
+            System.err.println("Error al buscar en la API: " + e.getMessage());
+            return Optional.empty();
         }
     }
 
-    public void buscarLibrosRegistrados() {
-        System.out.println("Libros Registrados----------------------------------------------------");
-        libros = libroService.buscarTodosLosLibros();
-        libros.forEach(s ->{
-            System.out.println("* " + s.getTitulo() + ", [" + s.getIdioma()+"]");
-        });
+    private void procesarLibro(DatosLibro datosLibro) {
+        libroService.busquedaDeLibroPorTitulo(datosLibro.titulo()).ifPresentOrElse(
+                libro -> System.out.println("Libro ya registrado: "),
+                () -> tratarLibroNuevo(datosLibro)
+        );
     }
-    public void buscarAutoresRegistrados() {
-        System.out.println("Autores Registrados---------------------------------------------------");
-        autores = autorService.buscarTodosLosAutores();
-        autores.forEach(s ->{
-            System.out.println( "* " + s.getNombre() + " (" +s.getAnoNacimiento()+" - "+s.getAnoMuerte()+")");
-        });
+    @Transactional
+    private void tratarLibroNuevo(DatosLibro datosLibro) {
+        Optional<DatosAutor> autorLibro = datosLibro.autores().stream().findFirst();
+
+        if (autorLibro.isEmpty()) {
+            System.out.println("No se encontraron autores para el libro");
+            return;
+        }
+        Autor autor = autorService.busquedaAutorPorNombre(autorLibro.get().nombre())
+                .orElseGet(() -> {
+                    Autor nuevoAutor = new Autor(autorLibro.get());
+                    autorService.saveAutor(nuevoAutor);
+                    return nuevoAutor;
+                });
+
+        Libro libro = new Libro(datosLibro, autor);
+        autor.addLibro(libro);
+        libroService.saveLibro(libro);
+        System.out.println("Libro guardado: " + libro);
     }
 
-    private void buscarLibrosxIdioma() {
+    public void buscarLibrosRegistrados() {
+        libros = libroService.buscarTodosLosLibros();
+        if (libros != null) {
+            System.out.println("Libros Registrados:");
+            libros.forEach(System.out::println);
+        } else {System.out.println("no hay libros registrados");}
+    }
+    public void buscarAutoresRegistrados() {
+        autores = autorService.buscarTodosLosAutores();
+        if (autores != null) {
+            System.out.println("Autores Registrados:");
+            autores.forEach(System.out::println);
+        } else {
+            System.out.println("no hay autores registrados");
+        }
+    }
+
+    private void buscarLibrosPorIdioma() {
         var opcion = -1;
         String idioma = null;
         while (opcion != 0) {
@@ -120,14 +147,13 @@ public class Principal {
                     2 - INGLES (EN)
                     3 - FRANCES (FR)
                     4 - ITALIANO (IT)
-                                                     
+                    
                     0 - Salir
                     """;
             System.out.println(menu);
             try{
                 opcion = teclado.nextInt();
             } catch (Exception e) {
-                System.out.println(e.getClass());
                 System.out.println("Entrada no valida");
                 opcion = -1;
             }
@@ -144,7 +170,7 @@ public class Principal {
                     idioma = "fr";
                     break;
                 case 4:
-                    idioma = "it";
+                    idioma = "tl";
                     break;
                 case 0:
                     System.out.println("Cerrando...");
@@ -155,9 +181,7 @@ public class Principal {
             if(opcion > 0 && opcion < 5 ) {
                 libros = libroService.buscarxTitulo(idioma);
                 System.out.println(libros.size() + " Resultados: ");
-                libros.forEach(s ->{
-                    System.out.println("* " + s.getTitulo());
-                });
+                libros.forEach(System.out::println);
             }
         }
     }
@@ -168,13 +192,10 @@ public class Principal {
             ano = teclado.nextInt();
             autores = autorService.autoresVivos(ano);
         } catch (Exception e) {
-            System.out.println(e.getClass());
             System.out.println("Entrada no valida");
         }
         teclado.nextLine();
         System.out.println(autores.size() + " Resultados: ");
-        autores.forEach(s ->{
-            System.out.println("* " + s.getNombre());
-        });
+        autores.forEach(System.out::println);
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class LibroService {
@@ -21,5 +22,8 @@ public class LibroService {
     }
     public List<Libro> buscarxTitulo(String idioma) {
         return libroRepository.seriesPorIdioma(idioma);
+    }
+    public Optional<Libro> busquedaDeLibroPorTitulo(String titulo){
+        return libroRepository.BusquedaDeLibro(titulo);
     }
 }
